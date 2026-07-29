@@ -2,12 +2,6 @@ import socket
 import threading
 import struct
 
-LISTEN_IP = "0.0.0.0"
-LISTEN_PORT = 49005
-ROW_POSITION = 20
-ROW_HEADING = 17
-ROW_SPEED = 3
-
 class XPlaneListener:
     def __init__(self, host, port):
         self.host = host
@@ -27,7 +21,35 @@ class XPlaneListener:
 
         while self._running:
             data, addr = sock.recvfrom(1024)
-            # Add data to the parsed_values dictionary
+            parsed = self._parse_packet(data)
+            
+            if parsed:
+                with self._lock:
+                    self.parsed_values.update(parsed)
 
+    def _parse_packet(self, data: bytes) -> dict:
+        if data[:4] != b"DATA":
+            return {}
 
+        body = data[5:]
+        result = {}
 
+        for byte in range(0, len(body), 36):
+            chunk = body[byte:byte + 36]
+            index, *floats = struct.unpack("<i8f", chunk)
+
+            if index == 20:
+                result["lat"] = floats[0]
+                result["lon"] = floats[1]
+                result["alt_msl"] = floats[2]
+            elif index == 17:
+                result["heading"] = floats[2]
+            elif index == 3:
+                result["speed"] = floats[0]
+                
+        return result
+    
+    def get_latest(self) -> dict:
+        with self._lock:
+            return self.parsed_values.copy()
+                
