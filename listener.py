@@ -9,6 +9,7 @@ class XPlaneListener:
         self.parsed_values = {}
         self._lock = threading.Lock()
         self._running = False
+        self._sock = None
 
     def start(self) -> None:
         self._running = True
@@ -21,13 +22,19 @@ class XPlaneListener:
             self._sock.close()
 
     def _listen_loop(self) -> None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.host, self.port))
-
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.settimeout(0.5)
+        self._sock.bind((self.host, self.port))
+        
         while self._running:
-            data, addr = sock.recvfrom(1024)
-            parsed = self._parse_packet(data)
+            try:
+                data, addr = self._sock.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
             
+            parsed = self._parse_packet(data)
             if parsed:
                 with self._lock:
                     self.parsed_values.update(parsed)
