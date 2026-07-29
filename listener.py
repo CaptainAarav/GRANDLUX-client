@@ -14,6 +14,11 @@ class XPlaneListener:
         self._running = True
         thread = threading.Thread(target=self._listen_loop, daemon=True)
         thread.start()
+        
+    def stop(self) -> None:
+        self._running = False
+        if self._sock:
+            self._sock.close()
 
     def _listen_loop(self) -> None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -52,4 +57,3 @@ class XPlaneListener:
     def get_latest(self) -> dict:
         with self._lock:
             return self.parsed_values.copy()
-                
