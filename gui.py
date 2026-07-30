@@ -54,6 +54,7 @@ class App:
             self._build_login_section()
             
         self._build_sim_selector()
+        self._build_stats_section()
 
     def _build_header(self) -> None:
         header = ctk.CTkFrame(self.root, fg_color=dark_colour, height=100, corner_radius=0)
@@ -128,3 +129,24 @@ class App:
             row, text="MSFS (coming soon)", variable=self.sim_choice, value="msfs",
             font=subtitle_font, fg_color=red_colour, state="disabled",
         ).pack(side="left", padx=(16, 0))
+        
+    def _build_stats_section(self) -> None:
+        card = ctk.CTkFrame(self.root, fg_color=white_colour, border_width=1, border_color=grey_colour, corner_radius=8)
+        card.pack(fill="x", padx=24, pady=14)
+
+        self.stat_labels = {}
+        fields = [
+            ("lat", "Latitude"),
+            ("lon", "Longitude"),
+            ("alt_msl", "Altitude (MSL)"),
+            ("heading", "Heading"),
+            ("speed", "Speed"),
+        ]
+        for i, (key, label) in enumerate(fields):
+            row = ctk.CTkFrame(card, fg_color=white_colour)
+            row.pack(fill="x", padx=16, pady=(12 if i == 0 else 6, 12 if i == len(fields) - 1 else 6))
+            
+            ctk.CTkLabel(row, text=label, font=subtitle_font, text_color=grey_colour, fg_color=white_colour).pack(side="left")
+            value_label = ctk.CTkLabel(row, text="—", font=value_font, text_color=dark_colour, fg_color=white_colour)
+            value_label.pack(side="right")
+            self.stat_labels[key] = value_label
