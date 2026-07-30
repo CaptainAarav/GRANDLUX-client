@@ -38,7 +38,7 @@ class App:
         self.root = root
         self.root.title("GrandLux Tracking Client")
         self.root.configure(fg_color=background_colour)
-        self.root.geometry("550x600")
+        self.root.geometry("550x650")
         self.root.resizable(False, False)
         self.listener = None
         self.login_listener = None
@@ -55,6 +55,10 @@ class App:
             
         self._build_sim_selector()
         self._build_stats_section()
+        self._build_toggle_section()
+        self._build_footer()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.after(2000, self._poll)
 
     def _build_header(self) -> None:
         header = ctk.CTkFrame(self.root, fg_color=dark_colour, height=100, corner_radius=0)
@@ -145,8 +149,75 @@ class App:
         for i, (key, label) in enumerate(fields):
             row = ctk.CTkFrame(card, fg_color=white_colour)
             row.pack(fill="x", padx=16, pady=(12 if i == 0 else 6, 12 if i == len(fields) - 1 else 6))
-            
             ctk.CTkLabel(row, text=label, font=subtitle_font, text_color=grey_colour, fg_color=white_colour).pack(side="left")
             value_label = ctk.CTkLabel(row, text="—", font=value_font, text_color=dark_colour, fg_color=white_colour)
             value_label.pack(side="right")
             self.stat_labels[key] = value_label
+
+    def _build_toggle_section(self) -> None:
+        section = ctk.CTkFrame(self.root, fg_color=background_colour, corner_radius=0)
+        section.pack(fill="x", padx=24, pady=(6, 10))
+
+        self.toggle_button = ctk.CTkButton(
+            section, text="Start Tracking",
+            corner_radius=10,
+            fg_color=red_colour,
+            hover_color="#a81f24",
+            text_color="#ffffff",
+            font=button_font,
+            width=150,
+            height=35,
+            command=self._on_toggle,
+        )
+        
+        self.toggle_button.pack()
+
+        self.status_label = ctk.CTkLabel(section, text="● Stopped", font=subtitle_font, text_color=grey_colour, fg_color=background_colour)
+        self.status_label.pack(pady=(10, 0))
+
+    def _build_footer(self) -> None:
+        footer = ctk.CTkFrame(self.root, fg_color=dark_colour, corner_radius=0)
+        footer.pack(fill="x", side="bottom")
+        ctk.CTkLabel(footer, text="© 2026 GrandLux", font=small_font, text_color=grey_colour, fg_color=dark_colour).pack()
+
+    def _on_toggle(self) -> None:
+        if self.listener is None:
+            token = load_refresh_token()
+            if token is None:
+                self.status_label.configure(text="● Log in first", text_color=red_colour)
+                return
+
+            self.listener = XPlaneListener(LISTEN_IP, LISTEN_PORT)
+            self.sender = DataSender(self.listener, API_URL, token, interval=2)
+            self.listener.start()
+            self.sender.start()
+
+            self.toggle_button.configure(text="Stop Tracking", fg_color=dark_colour, hover_color="#000000")
+            self.status_label.configure(text="● Tracking", text_color=gold_colour)
+        else:
+            self.sender.stop()
+            self.listener.stop()
+            self.listener = None
+            self.sender = None
+
+            self.toggle_button.configure(text="Start Tracking", fg_color=red_colour, hover_color="#a81f24")
+            self.status_label.configure(text="● Stopped", text_color=grey_colour)
+            for label in self.stat_labels.values():
+                label.configure(text="—")
+
+    def _poll(self) -> None:
+        if self.listener is not None:
+            data = self.listener.get_latest()
+            for key, label in self.stat_labels.items():
+                if key in data:
+                    value = data[key]
+                    label.configure(text=f"{value:.4f}" if key in ("lat", "lon") else f"{value:.1f}")
+
+        self.root.after(2000, self._poll)
+
+    def _on_close(self) -> None:
+        if self.listener is not None:
+            self.listener.stop()
+        if self.sender is not None:
+            self.sender.stop()
+        self.root.destroy()
