@@ -3,6 +3,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from listener import XPlaneListener
 from sender import DataSender
+from token_handlers import save_refresh_token, load_refresh_token
 
 
 LISTEN_IP = "0.0.0.0"
@@ -37,8 +38,11 @@ class App:
         self.listener = None
         self.sender = None
         self.sim_choice = tk.StringVar(value="xplane")
+        
+        if load_refresh_token() == None:
+            self._build_login_section()
+        
         self._build_header()
-        self._build_login_section()
         # self._build_sim_selector()
         # self._build_stats_section()
         # self._build_toggle_section()
