@@ -24,7 +24,6 @@ class CallbackHandler(BaseHTTPRequestHandler):
 class LoginListener:
     def __init__(self):
         self.port = None
-        self.token = None
         self._lock = threading.Lock()
         self._running = False
         self._server = None

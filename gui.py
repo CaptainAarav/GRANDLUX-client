@@ -5,7 +5,6 @@ import webbrowser
 from PIL import Image, ImageTk
 from listener import XPlaneListener
 from sender import DataSender
-from token_handlers import save_refresh_token, load_refresh_token
 from auth import LoginListener, open_login
 
 
@@ -47,12 +46,8 @@ class App:
 
         self._icon_image = ImageTk.PhotoImage(Image.open(logo_file).convert("RGBA"))
         self.root.iconphoto(True, self._icon_image)
-
         self._build_header()
-
-        if load_refresh_token() is None:
-            self._build_login_section()
-            
+        self._build_login_section()
         self._build_sim_selector()
         self._build_stats_section()
         self._build_toggle_section()
@@ -111,7 +106,7 @@ class App:
             self.root.after(1000, self._check_login_status)
             return
 
-        save_refresh_token(token)
+        self.token = token
         self.login_status_label.configure(text="Logged In!", text_color=green_colour)
         self.login_button.pack_forget()
         
@@ -182,13 +177,12 @@ class App:
 
     def _on_toggle(self) -> None:
         if self.listener is None:
-            token = load_refresh_token()
-            if token is None:
+            if self.token is None:
                 self.status_label.configure(text="● Log in first", text_color=red_colour)
                 return
 
             self.listener = XPlaneListener(LISTEN_IP, LISTEN_PORT)
-            self.sender = DataSender(self.listener, API_URL, token, interval=2)
+            self.sender = DataSender(self.listener, API_URL, self.token, interval=2)
             self.listener.start()
             self.sender.start()
 
