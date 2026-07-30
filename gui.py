@@ -24,7 +24,7 @@ green_colour = "#2e7d32"
 
 title_font = ("Georgia", 36)
 subtitle_font = ("Helvetica", 15)
-label_font = ("Helvetica", 10, "bold")
+label_font = ("Helvetica", 14, "bold")
 value_font = ("Helvetica", 13, "bold")
 button_font = ("Helvetica", 13, "bold")
 small_font = ("Helvetica", 9)
@@ -52,6 +52,8 @@ class App:
 
         if load_refresh_token() is None:
             self._build_login_section()
+            
+        self._build_sim_selector()
 
     def _build_header(self) -> None:
         header = ctk.CTkFrame(self.root, fg_color=dark_colour, height=100, corner_radius=0)
@@ -107,3 +109,22 @@ class App:
         save_refresh_token(token)
         self.login_status_label.configure(text="Logged In!", text_color=green_colour)
         self.login_button.pack_forget()
+        
+    def _build_sim_selector(self) -> None:
+        section = ctk.CTkFrame(self.root, fg_color=background_colour, corner_radius=0)
+        section.pack(fill="x", padx=24, pady=10)
+
+        ctk.CTkLabel(section, text="SIMULATOR", font=label_font, text_color=gold_colour, fg_color=background_colour).pack(anchor="w")
+
+        row = ctk.CTkFrame(section, fg_color=background_colour)
+        row.pack(fill="x", pady=(6, 0))
+
+        ctk.CTkRadioButton(
+            row, text="X-Plane", variable=self.sim_choice, value="xplane",
+            font=subtitle_font, fg_color=red_colour,
+        ).pack(side="left")
+
+        ctk.CTkRadioButton(
+            row, text="MSFS (coming soon)", variable=self.sim_choice, value="msfs",
+            font=subtitle_font, fg_color=red_colour, state="disabled",
+        ).pack(side="left", padx=(16, 0))
