@@ -3,8 +3,8 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-CALLBACK_PORT = 8734
-LOGIN_URL = "https://grandlux.lu/login"
+def open_login(port):
+    webbrowser.open(f"{"https://grandlux.lu/login"}?redirect_port={port}")
 
 class CallbackHandler(BaseHTTPRequestHandler):
     received_token = None

@@ -1,10 +1,12 @@
 import os
 import tkinter as tk
 import customtkinter as ctk
-from PIL import Image
+import webbrowser
+from PIL import Image, ImageTk
 from listener import XPlaneListener
 from sender import DataSender
 from token_handlers import save_refresh_token, load_refresh_token
+from auth import LoginListener, open_login
 
 
 LISTEN_IP = "0.0.0.0"
@@ -41,6 +43,9 @@ class App:
         self.login_listener = None
         self.sender = None
         self.sim_choice = tk.StringVar(value="xplane")
+
+        self._icon_image = ImageTk.PhotoImage(Image.open(logo_file).convert("RGBA"))
+        self.root.iconphoto(True, self._icon_image)
 
         self._build_header()
 
@@ -83,4 +88,7 @@ class App:
         self.login_button.pack(pady=(10, 0))
 
     def _on_login_click(self) -> None:
-        pass 
+        self.login_listener = LoginListener()
+        self.login_listener.start()
+        
+        open_login(self.login_listener.port)
