@@ -20,6 +20,7 @@ gold_colour = "#c9a227"
 grey_colour = "#55677a"
 light_colour = "#f2f1ec"
 white_colour = "#ffffff"
+green_colour = "#2e7d32"
 
 title_font = ("Georgia", 36)
 subtitle_font = ("Helvetica", 15)
@@ -88,7 +89,21 @@ class App:
         self.login_button.pack(pady=(10, 0))
 
     def _on_login_click(self) -> None:
+        if self.login_listener is not None:
+            return
+
+        self.login_button.configure(text="Waiting for login...", state="disabled")
         self.login_listener = LoginListener()
         self.login_listener.start()
-        
         open_login(self.login_listener.port)
+        self.root.after(1000, self._check_login_status)
+
+    def _check_login_status(self) -> None:
+        token = self.login_listener.get_token()
+        if token is None:
+            self.root.after(1000, self._check_login_status)
+            return
+
+        save_refresh_token(token)
+        self.login_status_label.configure(text="Logged In!", text_color=green_colour)
+        self.login_button.pack_forget()

@@ -4,7 +4,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 def open_login(port):
-    webbrowser.open(f"{"https://grandlux.lu/login"}?redirect_port={port}")
+    webbrowser.open(f"https://grandlux.lu/login?redirect_port={port}")
 
 class CallbackHandler(BaseHTTPRequestHandler):
     received_token = None
@@ -22,32 +22,32 @@ class CallbackHandler(BaseHTTPRequestHandler):
         pass
 
 class LoginListener:
-    def __init__(self, port):
-        self.port = port
+    def __init__(self):
+        self.port = None
         self.token = None
         self._lock = threading.Lock()
         self._running = False
-        
+        self._server = None
+
     def start(self) -> None:
         self._running = True
+        self._server = HTTPServer(("127.0.0.1", 0), CallbackHandler)
+        self.port = self._server.server_address[1]
         thread = threading.Thread(target=self._wait_for_callback, daemon=True)
         thread.start()
-        
+
     def stop(self) -> None:
         self._running = False
-    
+
     def _wait_for_callback(self) -> None:
-        server = HTTPServer(("127.0.0.1", self.port), CallbackHandler)
-        server.timeout = 0.5
-        
+        self._server.timeout = 0.5
         while self._running:
-            server.handle_request()
+            self._server.handle_request()
             if CallbackHandler.received_token is not None:
                 break
-            
         with self._lock:
             self.token = CallbackHandler.received_token
-            
+
     def get_token(self):
         with self._lock:
             return self.token
