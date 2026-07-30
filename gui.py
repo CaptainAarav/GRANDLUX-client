@@ -36,13 +36,15 @@ class App:
         self.root.geometry("550x600")
         self.root.resizable(False, False)
         self.listener = None
+        self.login_listener = None
         self.sender = None
         self.sim_choice = tk.StringVar(value="xplane")
         
-        if load_refresh_token() == None:
-            self._build_login_section()
-        
         self._build_header()
+
+        if load_refresh_token() is None:
+            self._build_login_section()
+            
         # self._build_sim_selector()
         # self._build_stats_section()
         # self._build_toggle_section()
@@ -68,5 +70,13 @@ class App:
     def _build_login_section(self) -> None:
         section = tk.Frame(self.root, bg=background_colour)
         section.pack(fill="x", padx=24, pady=(20, 10))
-        
-        tk.Label(section, text="API Token", font=label_font, fg=gold_colour, bg=background_colour).pack(anchor="w")
+
+        self.login_status_label = tk.Label(section, text="Not logged in", font=subtitle_font, fg=grey_colour, bg=background_colour)
+        self.login_status_label.pack(anchor="w")
+
+        self.login_button = tk.Label(
+            section, text="Log In", font=button_font, fg="#ffffff", bg=red_colour,
+            cursor="hand2", pady=8,
+        )
+        self.login_button.pack(fill="x", pady=(6, 0))
+        self.login_button.bind("<Button-1>", lambda e: self._on_login_click())
