@@ -25,8 +25,7 @@ value_font = ("Helvetica", 13, "bold")
 button_font = ("Helvetica", 12, "bold")
 small_font = ("Helvetica", 9)
 
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
+logo_file = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"), "logo.png")
 
 class App:
     def __init__(self, root):
@@ -51,3 +50,14 @@ class App:
         header = tk.Frame(self.root, bg=dark_colour, height=100)
         header.pack(fill="x")
         header.pack_propagate(False)
+        
+        image = Image.open(logo_file).convert("RGBA")
+        image.thumbnail((56, 56), Image.LANCZOS)
+        self._logo_image = ImageTk.PhotoImage(image)
+        
+        tk.Label(header, image=self._logo_image, bg=dark_colour).pack(side="left", padx=(20, 12), pady=20)
+        
+        text_frame = tk.Frame(header, bg=dark_colour)
+        text_frame.pack(side="left", pady=20)
+        tk.Label(text_frame, text="GrandLux", font=title_font, fg=red_colour, bg=dark_colour).pack(anchor="w")
+        tk.Label(text_frame, text="Flight Tracker", font=subtitle_font, fg=grey_colour, bg=dark_colour).pack(anchor="w")
