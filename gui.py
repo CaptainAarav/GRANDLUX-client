@@ -65,3 +65,4 @@ class App:
         section = tk.Frame(self.root, bg=background_colour)
         section.pack(fill="x", padx=24, pady=(20, 10))
         
+        tk.Label(section, text="API Token", font=label_font, fg=gold_colour, bg=background_colour).pack(anchor="w")
