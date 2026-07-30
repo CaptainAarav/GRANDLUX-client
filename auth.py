@@ -4,7 +4,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 def open_login(port):
-    webbrowser.open(f"https://grandlux.lu/login?redirect_port={port}")
+    webbrowser.open(f"http://localhost:5173/login?redirect_port={port}")
 
 class CallbackHandler(BaseHTTPRequestHandler):
     received_token = None
@@ -16,7 +16,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
-        self.wfile.write(b"<h1>You're logged in - you can close this tab.</h1>")
+        self.wfile.write(b"<h1>You're logged in! You can close this tab</h1>")
 
     def log_message(self, format, *args):
         pass
