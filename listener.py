@@ -54,10 +54,13 @@ class XPlaneListener:
                 result["lat"] = floats[0]
                 result["lon"] = floats[1]
                 result["alt_msl"] = floats[2]
+                result["alt_agl"] = floats[3]
             elif index == 17:
                 result["heading"] = floats[2]
             elif index == 3:
                 result["speed"] = floats[0]
+            elif index == 4:
+                result["vvi_fpm"] = floats[1]
                 
         return result
     

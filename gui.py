@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 import customtkinter as ctk
+import requests
 import webbrowser
 from PIL import Image, ImageTk
 from listener import XPlaneListener
@@ -10,7 +11,7 @@ from auth import LoginListener, open_login
 
 LISTEN_IP = "0.0.0.0"
 LISTEN_PORT = 49005
-API_URL = "http://localhost:4000/api/flights/ping"
+API_BASE_URL = "http://localhost:4000"
 
 background_colour = "#F7F3EC"
 dark_colour = "#1b1d22"
@@ -37,11 +38,12 @@ class App:
         self.root = root
         self.root.title("GrandLux Tracking Client")
         self.root.configure(fg_color=background_colour)
-        self.root.geometry("550x650")
+        self.root.geometry("550x720")
         self.root.resizable(False, False)
         self.listener = None
         self.login_listener = None
         self.sender = None
+        self.flight_id = None
         self.sim_choice = tk.StringVar(value="xplane")
 
         self._icon_image = ImageTk.PhotoImage(Image.open(logo_file).convert("RGBA"))
@@ -153,6 +155,31 @@ class App:
         section = ctk.CTkFrame(self.root, fg_color=background_colour, corner_radius=0)
         section.pack(fill="x", padx=24, pady=(6, 10))
 
+        ctk.CTkLabel(section, text="FLIGHT PLAN", font=label_font, text_color=gold_colour, fg_color=background_colour).pack(anchor="w")
+
+        self.departure_icao_var = tk.StringVar()
+        self.arrival_icao_var = tk.StringVar()
+
+        departure_row = ctk.CTkFrame(section, fg_color=background_colour)
+        departure_row.pack(fill="x", pady=(6, 0))
+        ctk.CTkLabel(departure_row, text="Departure ICAO", font=subtitle_font, text_color=grey_colour, fg_color=background_colour).pack(side="left")
+        self.departure_entry = ctk.CTkEntry(
+            departure_row, textvariable=self.departure_icao_var,
+            width=120, height=30, corner_radius=8,
+            fg_color=white_colour, border_color=grey_colour, text_color=dark_colour, font=subtitle_font,
+        )
+        self.departure_entry.pack(side="right")
+
+        arrival_row = ctk.CTkFrame(section, fg_color=background_colour)
+        arrival_row.pack(fill="x", pady=(6, 0))
+        ctk.CTkLabel(arrival_row, text="Arrival ICAO", font=subtitle_font, text_color=grey_colour, fg_color=background_colour).pack(side="left")
+        self.arrival_entry = ctk.CTkEntry(
+            arrival_row, textvariable=self.arrival_icao_var,
+            width=120, height=30, corner_radius=8,
+            fg_color=white_colour, border_color=grey_colour, text_color=dark_colour, font=subtitle_font,
+        )
+        self.arrival_entry.pack(side="right")
+
         self.toggle_button = ctk.CTkButton(
             section, text="Start Tracking",
             corner_radius=10,
@@ -165,7 +192,7 @@ class App:
             command=self._on_toggle,
         )
         
-        self.toggle_button.pack()
+        self.toggle_button.pack(pady=(14, 0))
 
         self.status_label = ctk.CTkLabel(section, text="● Stopped", font=subtitle_font, text_color=grey_colour, fg_color=background_colour)
         self.status_label.pack(pady=(10, 0))
@@ -181,18 +208,46 @@ class App:
                 self.status_label.configure(text="● Log in first", text_color=red_colour)
                 return
 
+            departure_icao = self.departure_entry.get().strip()
+            arrival_icao = self.arrival_entry.get().strip()
+
+            try:
+                response = requests.post(
+                    f"{API_BASE_URL}/api/flights/start",
+                    json={"departure_icao": departure_icao, "arrival_icao": arrival_icao},
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    timeout=5,
+                )
+                response.raise_for_status()
+            except requests.exceptions.RequestException:
+                self.status_label.configure(text="● Failed to start flight", text_color=red_colour)
+                return
+
+            self.flight_id = response.json().get("flight_id")
+
             self.listener = XPlaneListener(LISTEN_IP, LISTEN_PORT)
-            self.sender = DataSender(self.listener, API_URL, self.token, interval=2)
+            self.sender = DataSender(self.listener, f"{API_BASE_URL}/api/flights/ping", self.token, self.flight_id, interval=2)
             self.listener.start()
             self.sender.start()
 
             self.toggle_button.configure(text="Stop Tracking", fg_color=dark_colour, hover_color="#000000")
             self.status_label.configure(text="● Tracking", text_color=gold_colour)
         else:
+            try:
+                requests.post(
+                    f"{API_BASE_URL}/api/flights/end",
+                    json={"flight_id": self.flight_id},
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    timeout=5,
+                )
+            except requests.exceptions.RequestException as e:
+                print(f"End failed: {e}")
+
             self.sender.stop()
             self.listener.stop()
             self.listener = None
             self.sender = None
+            self.flight_id = None
 
             self.toggle_button.configure(text="Start Tracking", fg_color=red_colour, hover_color="#a81f24")
             self.status_label.configure(text="● Stopped", text_color=grey_colour)

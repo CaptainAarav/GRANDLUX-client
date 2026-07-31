@@ -3,10 +3,11 @@ import threading
 import time
 
 class DataSender:
-    def __init__(self, listener, api_url, token, interval=10):
+    def __init__(self, listener, api_url, token, flight_id, interval=10):
         self.listener = listener
         self.api_url = api_url
         self.token = token
+        self.flight_id = flight_id
         self.interval = interval
         self._running = False
         
@@ -29,10 +30,11 @@ class DataSender:
             time.sleep(self.interval)
             
     def _send(self, data: dict) -> None:
+        payload = {**data, "flight_id": self.flight_id}
         headers = {"Authorization": f"Bearer {self.token}"}
         
         try:
-            response = requests.post(self.api_url, json=data, headers=headers, timeout=5)
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=5)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Send failed: {e}")
