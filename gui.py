@@ -44,6 +44,7 @@ class App:
         self.login_listener = None
         self.sender = None
         self.flight_id = None
+        self.plan_id_by_label = {}
         self.sim_choice = tk.StringVar(value="xplane")
 
         self._icon_image = ImageTk.PhotoImage(Image.open(logo_file).convert("RGBA"))
@@ -55,6 +56,7 @@ class App:
         self._build_toggle_section()
         self._build_footer()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.bind("<FocusIn>", self._on_window_focus)
         self.root.after(2000, self._poll)
 
     def _build_header(self) -> None:
@@ -111,6 +113,8 @@ class App:
         self.token = token
         self.login_status_label.configure(text="Logged In!", text_color=green_colour)
         self.login_button.pack_forget()
+        self.refresh_button.configure(state="normal")
+        self._load_flight_plans()
         
     def _build_sim_selector(self) -> None:
         section = ctk.CTkFrame(self.root, fg_color=background_colour, corner_radius=0)
@@ -155,33 +159,32 @@ class App:
         section = ctk.CTkFrame(self.root, fg_color=background_colour, corner_radius=0)
         section.pack(fill="x", padx=24, pady=(6, 10))
 
-        ctk.CTkLabel(section, text="FLIGHT PLAN", font=label_font, text_color=gold_colour, fg_color=background_colour).pack(anchor="w")
-
-        self.departure_icao_var = tk.StringVar()
-        self.arrival_icao_var = tk.StringVar()
-
-        departure_row = ctk.CTkFrame(section, fg_color=background_colour)
-        departure_row.pack(fill="x", pady=(6, 0))
-        ctk.CTkLabel(departure_row, text="Departure ICAO", font=subtitle_font, text_color=grey_colour, fg_color=background_colour).pack(side="left")
-        self.departure_entry = ctk.CTkEntry(
-            departure_row, textvariable=self.departure_icao_var,
-            width=120, height=30, corner_radius=8,
-            fg_color=white_colour, border_color=grey_colour, text_color=dark_colour, font=subtitle_font,
+        header_row = ctk.CTkFrame(section, fg_color=background_colour)
+        header_row.pack(fill="x")
+        ctk.CTkLabel(header_row, text="FLIGHT PLAN", font=label_font, text_color=gold_colour, fg_color=background_colour).pack(side="left")
+        self.refresh_button = ctk.CTkButton(
+            header_row, text="Refresh",
+            corner_radius=8, width=70, height=24,
+            font=small_font,
+            fg_color=grey_colour, hover_color=dark_colour, text_color="#ffffff",
+            command=self._load_flight_plans,
+            state="disabled",
         )
-        self.departure_entry.pack(side="right")
+        self.refresh_button.pack(side="right")
 
-        arrival_row = ctk.CTkFrame(section, fg_color=background_colour)
-        arrival_row.pack(fill="x", pady=(6, 0))
-        ctk.CTkLabel(arrival_row, text="Arrival ICAO", font=subtitle_font, text_color=grey_colour, fg_color=background_colour).pack(side="left")
-        self.arrival_entry = ctk.CTkEntry(
-            arrival_row, textvariable=self.arrival_icao_var,
-            width=120, height=30, corner_radius=8,
-            fg_color=white_colour, border_color=grey_colour, text_color=dark_colour, font=subtitle_font,
+        self.plan_menu = ctk.CTkOptionMenu(
+            section, values=[],
+            width=220, height=32, corner_radius=8,
+            font=subtitle_font,
+            fg_color=white_colour, button_color=red_colour, button_hover_color="#a81f24",
+            text_color=dark_colour,
         )
-        self.arrival_entry.pack(side="right")
+
+        self.plan_empty_label = ctk.CTkLabel(section, text="Log in to load flight plans", font=subtitle_font, text_color=grey_colour, fg_color=background_colour)
+        self.plan_empty_label.pack(pady=(6, 0))
 
         self.toggle_button = ctk.CTkButton(
-            section, text="Start Tracking",
+            section, text="Start Flight",
             corner_radius=10,
             fg_color=red_colour,
             hover_color="#a81f24",
@@ -190,12 +193,57 @@ class App:
             width=150,
             height=35,
             command=self._on_toggle,
+            state="disabled",
         )
         
         self.toggle_button.pack(pady=(14, 0))
 
         self.status_label = ctk.CTkLabel(section, text="● Stopped", font=subtitle_font, text_color=grey_colour, fg_color=background_colour)
         self.status_label.pack(pady=(10, 0))
+
+    def _load_flight_plans(self) -> None:
+        if self.token is None:
+            return
+        try:
+            response = requests.get(
+                f"{API_BASE_URL}/api/flight-plans/mine",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=5,
+            )
+            response.raise_for_status()
+            plans = response.json()
+            if not isinstance(plans, list):
+                raise ValueError("unexpected flight-plans response")
+        except (requests.exceptions.RequestException, ValueError):
+            self.plan_empty_label.configure(text="Failed to load flight plans")
+            self._show_plan_ui({})
+            return
+
+        plan_id_by_label = {
+            f"{p.get('departure_icao')} → {p.get('arrival_icao')}": p["id"]
+            for p in plans
+        }
+        self.plan_empty_label.configure(text="No flight plans — create one on the website")
+        self._show_plan_ui(plan_id_by_label)
+
+    def _show_plan_ui(self, plan_id_by_label: dict) -> None:
+        self.plan_id_by_label = plan_id_by_label
+        if not plan_id_by_label:
+            self.plan_menu.pack_forget()
+            self.plan_empty_label.pack(pady=(6, 0))
+            self.toggle_button.configure(state="disabled")
+            return
+
+        self.plan_empty_label.pack_forget()
+        self.plan_menu.configure(values=list(plan_id_by_label))
+        previous = self.plan_menu.get()
+        self.plan_menu.set(previous if previous in plan_id_by_label else next(iter(plan_id_by_label)))
+        self.plan_menu.pack(pady=(6, 0))
+        self.toggle_button.configure(state="normal")
+
+    def _on_window_focus(self, event) -> None:
+        if event.widget is self.root and getattr(self, "token", None) is not None and self.listener is None:
+            self._load_flight_plans()
 
     def _build_footer(self) -> None:
         footer = ctk.CTkFrame(self.root, fg_color=dark_colour, corner_radius=0)
@@ -208,13 +256,15 @@ class App:
                 self.status_label.configure(text="● Log in first", text_color=red_colour)
                 return
 
-            departure_icao = self.departure_entry.get().strip()
-            arrival_icao = self.arrival_entry.get().strip()
+            plan_id = self.plan_id_by_label.get(self.plan_menu.get()) if self.plan_id_by_label else None
+            if plan_id is None:
+                self.status_label.configure(text="● No flight plan selected", text_color=red_colour)
+                return
 
             try:
                 response = requests.post(
                     f"{API_BASE_URL}/api/flights/start",
-                    json={"departure_icao": departure_icao, "arrival_icao": arrival_icao},
+                    json={"flight_plan_id": plan_id},
                     headers={"Authorization": f"Bearer {self.token}"},
                     timeout=5,
                 )
@@ -230,7 +280,7 @@ class App:
             self.listener.start()
             self.sender.start()
 
-            self.toggle_button.configure(text="Stop Tracking", fg_color=dark_colour, hover_color="#000000")
+            self.toggle_button.configure(text="Stop Flight", fg_color=dark_colour, hover_color="#000000")
             self.status_label.configure(text="● Tracking", text_color=gold_colour)
         else:
             try:
@@ -249,10 +299,12 @@ class App:
             self.sender = None
             self.flight_id = None
 
-            self.toggle_button.configure(text="Start Tracking", fg_color=red_colour, hover_color="#a81f24")
+            self.toggle_button.configure(text="Start Flight", fg_color=red_colour, hover_color="#a81f24")
             self.status_label.configure(text="● Stopped", text_color=grey_colour)
             for label in self.stat_labels.values():
                 label.configure(text="—")
+
+            self._load_flight_plans()
 
     def _poll(self) -> None:
         if self.listener is not None:
