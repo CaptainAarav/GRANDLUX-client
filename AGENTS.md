@@ -11,15 +11,15 @@ Python desktop GUI client (customtkinter) that tracks a flight simulator and upl
 ## Architecture
 
 - `main.py` — entrypoint, creates the `ctk.CTk()` root and `gui.App`.
-- `gui.py` — all UI. Defines color/font constants at module top. Hardcodes `API_BASE_URL = http://localhost:4000`, `LISTEN_PORT = 49005`. After login it loads the pilot's pending flight plans via `GET /api/flight-plans/mine` into a dropdown (labels like `"EGLL → LUXL"`, mapped to IDs in `self.plan_id_by_label`); empty plans show a message and disable the start button. On Start it POSTs `{flight_plan_id}` to `/api/flights/start`, stores the returned `flight_id`, and on Stop POSTs `{flight_id}` to `/api/flights/end`. Builds endpoint paths as `f"{API_BASE_URL}/api/flights/ping"`. Plans re-fetch on window focus and via a Refresh button.
+- `gui.py` — all UI. Defines color/font constants at module top. Hardcodes `API_BASE_URL = https://grandlux-site-server.onrender.com`, `LISTEN_PORT = 49005`. After login it loads the pilot's pending flight plans via `GET /api/flight-plans/mine` into a dropdown (labels like `"EGLL → LUXL"`, mapped to IDs in `self.plan_id_by_label`); empty plans show a message and disable the start button. On Start it POSTs `{flight_plan_id}` to `/api/flights/start`, stores the returned `flight_id`, and on Stop POSTs `{flight_id}` to `/api/flights/end`. Builds endpoint paths as `f"{API_BASE_URL}/api/flights/ping"`. Plans re-fetch on window focus and via a Refresh button.
 - `listener.py` — `XPlaneListener`: binds a UDP socket on `0.0.0.0:49005` and parses X-Plane `DATA` packets. Each packet is `b"DATA"` followed by repeated 36-byte chunks unpacked as `<i8f`. Data indices: `20` → lat/lon/alt_msl/alt_agl, `17` → heading, `3` → speed, `4` → vvi_fpm.
 - `sender.py` — `DataSender`: polls the listener every `interval` seconds and POSTs `{lat, lon, alt_msl, alt_agl, heading, speed, vvi_fpm, flight_id}` as JSON with a `Bearer` token. Logs failures via `print`, never throws.
-- `auth.py` — login flow: starts an HTTP server on an ephemeral localhost port, opens `http://localhost:5173/login?redirect_port=<port>` in the browser, and captures `?token=` from the callback.
+- `auth.py` — login flow: starts an HTTP server on an ephemeral localhost port, opens `https://grandlux-site-client.onrender.com/login?redirect_port=<port>` in the browser, and captures `?token=` from the callback.
 - `token_handlers.py` — **dead code**. Persisted refresh-token storage (`client_config.json`) left over from before the "no persistent login" change; nothing imports it.
 
 ## External dependencies
 
-The backend (login page on `localhost:5173`, API on `localhost:4000`) is a separate service not in this repo. Login and tracking only work when it's running locally.
+The backend (login page on `grandlux-site-client.onrender.com`, API on `grandlux-site-server.onrender.com`) is a separate service not in this repo. Login and tracking require it to be deployed and reachable over HTTPS.
 
 ## Gotchas
 

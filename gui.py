@@ -11,7 +11,7 @@ from auth import LoginListener, open_login
 
 LISTEN_IP = "0.0.0.0"
 LISTEN_PORT = 49005
-API_BASE_URL = "http://localhost:4000"
+API_BASE_URL = "https://grandlux-site-server.onrender.com"
 
 background_colour = "#F7F3EC"
 dark_colour = "#1b1d22"

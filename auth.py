@@ -4,7 +4,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 def open_login(port):
-    webbrowser.open(f"http://localhost:5173/login?redirect_port={port}")
+    webbrowser.open(f"https://grandlux-site-client.onrender.com/login?redirect_port={port}")
 
 class CallbackHandler(BaseHTTPRequestHandler):
     received_token = None
